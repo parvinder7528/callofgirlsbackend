@@ -19,9 +19,15 @@
 // app.get('/', (req, res) => {
 //   res.json({ message: 'HotelBooking API - JWT Auth Ready' });
 // });
+// app.use(express.static(path.join(__dirname, "dist/client")));
+
 // app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // app.use('/api',require("./routes/mainRoutes"));
 // require('./crons/adsrun.cron');
+// app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+// app.get("/", (req, res) => {
+//   res.sendFile(path.join(__dirname, "dist", "index.html"));
+// });
 // app.listen(PORT, () => {
 //   console.log(`🚀 Server running on port ${PORT}`);
 // });
@@ -91,17 +97,17 @@ app.use(async (req, res, next) => {
 });
 
 
+
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "dist", "index.html"));
 });
-
 // ✅ Test route
 // app.get("/", (req, res) => {
 //   res.json({ message: "API is working 🚀" });
 // });
 
 // ✅ Static (optional)
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 // ✅ Routes
 app.use("/api", mainRoutes);
