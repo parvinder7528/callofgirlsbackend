@@ -28,10 +28,8 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
-// import path from "path";
 const path =require("path")
 const mainRoutes =require("./routes/mainRoutes.js")
-// import mainRoutes from "../routes/mainRoutes.js";
 
 const app = express();
 
@@ -57,6 +55,8 @@ app.use(cors({
   origin: ["https://callofgirls-frontend.vercel.app"],
   credentials: true
 }))
+app.use(express.static(path.join(__dirname, "dist")));
+
 // ✅ YOUR HEADER + DB MIDDLEWARE (FIXED)
 app.use(async (req, res, next) => {
   // 🌍 Allow all origins
@@ -90,10 +90,15 @@ app.use(async (req, res, next) => {
   }
 });
 
-// ✅ Test route
+
 app.get("/", (req, res) => {
-  res.json({ message: "API is working 🚀" });
+  res.sendFile(path.join(__dirname, "dist", "index.html"));
 });
+
+// ✅ Test route
+// app.get("/", (req, res) => {
+//   res.json({ message: "API is working 🚀" });
+// });
 
 // ✅ Static (optional)
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
