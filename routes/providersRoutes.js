@@ -1,6 +1,6 @@
 const express = require('express');
-const {authVerification}= require("../helpers/tokenGenAndVerification")
-const providerController =require("../controller/providerController/provider.ctlr")
+const {authVerification}= require("../helpers/tokenGenAndVerification.js")
+const providerController =require("../controller/providerController/provider.ctlr.js")
 const router = express.Router();
 
 router.get("/get-allprofiles",providerController.getAllProfiles)

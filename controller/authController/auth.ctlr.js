@@ -1,6 +1,6 @@
 
-const model = require("../../model/index")
-const { generateToken } = require("../../helpers/tokenGenAndVerification")
+const model = require("../../model/index.js")
+const { generateToken } = require("../../helpers/tokenGenAndVerification.js")
 exports.signup = async (req, res) => {
   try {
     const { name, email, password, age, phoneNumber, role, location } = req.body;

@@ -1,5 +1,5 @@
 const express = require('express');
-const upload = require("../helpers/fileUploader");
+const upload = require("../helpers/fileUploader.js");
 const router = express.Router();
 
 router.post("/upload", upload.array('photos', 8), (req, res) => {

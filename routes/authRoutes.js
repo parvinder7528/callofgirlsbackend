@@ -1,6 +1,6 @@
 const express = require('express');
-const authController = require('../controller/authController/auth.ctlr');
-const {authVerification}= require("../helpers/tokenGenAndVerification")
+const authController = require('../controller/authController/auth.ctlr.js');
+const {authVerification}= require("../helpers/tokenGenAndVerification.js")
 
 const router = express.Router();
 

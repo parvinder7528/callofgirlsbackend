@@ -1,4 +1,4 @@
-const model = require("../model/index")
+const model = require("../model/index.js")
 
 
 // 🔥 CREATE BOOST

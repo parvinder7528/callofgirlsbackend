@@ -30,7 +30,7 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 // import path from "path";
 const path =require("path")
-const mainRoutes =require("../callofgirlsbackend/routes/mainRoutes")
+const mainRoutes =require("../callofgirlsbackend/routes/mainRoutes.js")
 // import mainRoutes from "../routes/mainRoutes.js";
 
 const app = express();
