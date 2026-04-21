@@ -53,7 +53,10 @@ const connectDB = async () => {
     throw err;
   }
 };
-
+app.use(cors({
+  origin: ["https://callofgirls-frontend.vercel.app"],
+  credentials: true
+}))
 // ✅ YOUR HEADER + DB MIDDLEWARE (FIXED)
 app.use(async (req, res, next) => {
   // 🌍 Allow all origins
