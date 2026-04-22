@@ -8,7 +8,7 @@ router.post("/upload", upload.array('photos', 8), (req, res) => {
             return res.status(400).json({ message: "No files uploaded" });
         }
         // const url = "http://localhost:4000"
-        const url="https://callofgirls.vercel.app"
+        const url="https://callofgirlsbackend.vercel.app"
         const fileUrls = req.files.map(file => {
             return `${url}/uploads/gallery/${file.filename}`;
         });
