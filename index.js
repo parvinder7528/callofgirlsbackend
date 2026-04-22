@@ -33,88 +33,42 @@
 // });
 
 
-
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
-const path =require("path")
-const mainRoutes =require("./routes/mainRoutes.js")
-
+const path = require("path");
+const mainRoutes = require("./routes/mainRoutes.js");
+require("dotenv").config()
 const app = express();
 
-// ✅ Body parser
+// ✅ Middleware
 app.use(express.json());
 
-// ✅ MongoDB (connect only once)
+app.use(cors({
+  origin: "https://callofgirls-frontend.vercel.app",
+  credentials: true
+}));
+
+// ✅ MongoDB connect ONCE
 let isConnected = false;
 
 const connectDB = async () => {
   if (isConnected) return;
-
-  try {
-    await mongoose.connect(process.env.MONGO_URI);
-    isConnected = true;
-    console.log("✅ MongoDB connected");
-  } catch (err) {
-    console.error("❌ DB error:", err);
-    throw err;
-  }
+// console.log(process.env.MONGO_URI)
+  await mongoose.connect(process.env.MONGO_URI);
+  isConnected = true;
+  console.log("✅ MongoDB connected");
 };
-app.use(cors({
-  origin: ["https://callofgirls-frontend.vercel.app"],
-  credentials: true
-}))
-app.use(express.static(path.join(__dirname, "dist")));
 
-// ✅ YOUR HEADER + DB MIDDLEWARE (FIXED)
-app.use(async (req, res, next) => {
-  // 🌍 Allow all origins
-  res.setHeader("Access-Control-Allow-Origin", "*");
-
-  // Methods
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET, POST, PUT, DELETE, PATCH, OPTIONS"
-  );
-
-  // Headers
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-  );
-
-  // ✅ Handle preflight
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
-  }
-
-  try {
-    await connectDB(); // connect once
-    next();
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Database connection failed",
-    });
-  }
-});
-
-
-
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "dist", "index.html"));
-});
-// ✅ Test route
-// app.get("/", (req, res) => {
-//   res.json({ message: "API is working 🚀" });
-// });
-
-// ✅ Static (optional)
+connectDB();
 
 // ✅ Routes
 app.use("/api", mainRoutes);
 
-// ❌ DO NOT use app.listen()
+// ✅ Test route
+app.get("/", (req, res) => {
+  res.json({ message: "API working 🚀" });
+});
 
-module.exports=app
+// ❌ No app.listen
+module.exports = app;
