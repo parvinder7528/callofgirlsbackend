@@ -45,7 +45,7 @@ const app = express();
 app.use(express.json());
 
 app.use(cors({
-  origin: "https://callofgirls-frontend.vercel.app",
+  origin: "https://calllgirls-frontend.vercel.app",
   credentials: true
 }));
 
