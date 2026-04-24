@@ -1,26 +1,58 @@
 const express = require('express');
 const upload = require("../helpers/fileUploader.js");
+const { getUploadURL, deleteFromS3 } = require('../utils/s3.config.js');
 const router = express.Router();
 
-router.post("/upload", upload.array('photos', 8), (req, res) => {
-    try {
-        if (!req.files || req.files.length === 0) {
-            return res.status(400).json({ message: "No files uploaded" });
-        }
-        // const url = "http://localhost:4000"
-        const url="https://callofgirlsbackend.vercel.app"
-        const fileUrls = req.files.map(file => {
-            return `${url}/uploads/gallery/${file.filename}`;
-        });
-
-        return res.status(200).json({
-            success: true,
-            message: "Uploaded successfully",
-            paths: fileUrls
-        });
-    } catch (error) {
-        return res.status(500).send(error.message);
+router.post("/get-s3-url", async (req, res) => {
+  try {
+    const { fileName, fileType } = req.body;
+console.log(req.body,"[")
+    if (!fileName || !fileType) {
+      return res.status(400).json({
+        error: "fileName and fileType are required",
+      });
     }
+
+    const uploadUrl = await getUploadURL(fileName, fileType);
+
+    return res.status(200).json({
+      url: uploadUrl,
+    });
+
+  } catch (error) {
+    console.error("S3 URL Error:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+
+router.post("/delete-s3file", async (req, res) => {
+  try {
+    const { url } = req.body;
+
+    if (!url) {
+      return res.status(400).json({ error: "File URL is required" });
+    }
+
+    const fileKey = url.split(".com/")[1];
+
+    if (!fileKey) {
+      return res.status(400).json({ error: "Invalid S3 URL format" });
+    }
+
+    // 2. S3 se delete karein
+    await deleteFromS3(fileKey);
+
+    return res.status(200).json({
+      success: true,
+      message: "File deleted successfully",
+      deletedKey: fileKey
+    });
+
+  } catch (error) {
+    console.error("S3 Delete Error:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
 
 module.exports = router;
