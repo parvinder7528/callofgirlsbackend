@@ -6,7 +6,6 @@ const router = express.Router();
 router.post("/get-s3-url", async (req, res) => {
   try {
     const { fileName, fileType } = req.body;
-console.log(req.body,"[")
     if (!fileName || !fileType) {
       return res.status(400).json({
         error: "fileName and fileType are required",

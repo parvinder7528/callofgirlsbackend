@@ -76,20 +76,110 @@ exports.signup = async (req, res) => {
 exports.manageProfile = async (req, res) => {
   try {
     const { step, data } = req.body;
-    const userId = req.user.id; // From Protect Middleware
+    const userId = req.user.id;
 
-    let update = { currentStep: step + 1 };
+    let update = {};
 
-    // Step wise data mapping
-    if (step === 2) { update.city = data.cityId; update.category = data.categoryId; }
-    if (step === 3) { update.bio = data.bio; update.services = data.servicesIds; update.pricing = data.pricing; }
-    if (step === 4) { update.isProfileComplete = true; update.whatsAppNumber = data.whatsAppNumber;update.gallery=data.gallery }
+    // ✅ Step progression (max = 5)
+    if (step) {
+      update.currentStep = Math.min(step + 1, 5);
+    }
 
-    const user = await model.userModel.findByIdAndUpdate(userId, update, { new: true });
+    // 🟢 Step 1: Basic Info
+    if (step === 1) {
+      if (data.name) update.name = data.name;
+      if (data.age) update.age = Number(data.age);
+      if (data.phone) update.phone = data.phone;
+    }
 
-    res.status(200).json({ success: true, currentStep: user.currentStep });
+    // 🟢 Step 2: Location & Category
+    if (step === 2) {
+      if (data.city) update.city = data.city;
+      if (data.category) update.category = data.category;
+
+      if (data.ethnicity) update.ethnicity = data.ethnicity;
+      if (data.nationality) update.nationality = data.nationality;
+
+      if (data.breast) update.breast = data.breast;
+      if (data.hair) update.hair = data.hair;
+      if (data.body) update.body = data.body;
+    }
+
+    // 🟢 Step 3: Bio & Services
+    if (step === 3) {
+      if (data.bio) update.bio = data.bio;
+      if (data.services) update.services = data.services;
+      if (data.attention) update.attention = data.attention;
+      if (data.place) update.place = data.place;
+
+      if (data.pricing) {
+        update.pricing = {
+          oneHour: data.pricing.oneHour || 0,
+          threeHours: data.pricing.threeHours || 0,
+          fullNight: data.pricing.fullNight || 0
+        };
+      }
+    }
+
+    // 🟢 Step 4: Photos & Verification
+    if (step === 4) {
+      if (data.photos) update.gallery = data.photos;
+
+      if (data.isVerifiedAge !== undefined) {
+        update.isVerifiedAge = data.isVerifiedAge;
+      }
+    }
+
+    // 🟢 Step 5: Contact Info (FINAL STEP ✅)
+    if (step === 5) {
+      if (data.whatsAppNumber) update.whatsAppNumber = data.whatsAppNumber;
+      if (data.phone) update.phone = data.phone;
+
+      if (data.contactMethod) update.contactMethod = data.contactMethod;
+
+      update.whatsapp = data.whatsapp ?? false;
+      update.telegram = data.telegram ?? false;
+
+      if (data.timeSlot) update.timeSlot = data.timeSlot;
+      if (data.days) update.days = data.days;
+
+      if (data.coins) update.coins = data.coins;
+      if (data.coupon) update.coupon = data.coupon;
+
+      update.agree = data.agree ?? false;
+
+      // ✅ ONLY HERE profile becomes complete
+      update.isProfileComplete = true;
+      update.currentStep = 5;
+    }
+
+    // ❗ Clean undefined fields
+    Object.keys(update).forEach(
+      key => update[key] === undefined && delete update[key]
+    );
+
+    const user = await model.userModel.findByIdAndUpdate(
+      userId,
+      { $set: update },
+      { new: true, runValidators: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      currentStep: user.currentStep,
+      isProfileComplete: user.isProfileComplete
+    });
+
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 };
 
@@ -165,25 +255,23 @@ const userData= await model.userModel.findById(user._id)
   }
 };
 
-
-
-
-//
 exports.getCityCategoryService = async (req, res) => {
   try {
-    const { City, Category, Service } = model.cityCategoryServiceModel;
-    const [cities, categories, services] = await Promise.all([
-      City.find().sort({ name: 1 }),       // A-Z sort
-      Category.find().sort({ name: 1 }),
-      Service.find().sort({ name: 1 })
-    ]);
+    const { Category, City, Service,place } = model.cityCategoryServiceModel;
+         const [categories, cities, services,placeData] = await Promise.all([
+             Category.find().sort({ name: 1 }).lean(),
+             City.find().sort({ name: 1 }).lean(),
+             Service.find().sort({ name: 1 }).lean(),
+            place.find().sort({ name: 1 }).lean()
+         ]);
 
    return res.status(200).json({
       success: true,
       data: {
         cities,
         categories,
-        services
+        services,
+        placeData
       }
     });
   } catch (error) {
@@ -193,8 +281,7 @@ exports.getCityCategoryService = async (req, res) => {
 
 exports.checkCurrentStep = async (req, res) => {
     try {
-        const userId = req.user.id; // Protect middleware se ID milegi
-console.log(userId,"--")
+        const userId = req.user.id; 
         const user = await model.userModel.findById(userId).select('currentStep isProfileComplete name');
 
         if (!user) {

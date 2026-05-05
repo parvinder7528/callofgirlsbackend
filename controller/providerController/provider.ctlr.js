@@ -4,7 +4,6 @@ exports.getAllProfiles = async (req, res) => {
     try {
         const { city, category, all } = req.query;
 
-        // 1. Filter Object
         let filter = { isProfileComplete: true };
 
         if (city) filter.city = city;
@@ -13,13 +12,13 @@ exports.getAllProfiles = async (req, res) => {
         let limit = all === 'true' ? 0 : 4;
 
         const profiles = await model.userModel.find(filter)
-            .populate('city', 'name')      
-            .populate('category', 'name')  
-            .populate('services', 'name')  
+            .populate('city', 'name')
+            .populate('category', 'name')
+            .populate('services', 'name')
+            .populate('place', 'name')
             .limit(limit)
             .sort({ createdAt: -1 })
-            .lean(); 
-
+            .lean();
         res.status(200).json({
             success: true,
             results: profiles.length,
@@ -72,17 +71,6 @@ exports.getProfileById = async (req, res) => {
     }
 };
 
-// exports.getAllCategory =async(req,res)=>{
-// try {
-//     const {Category} =  model.cityCategoryServiceModel
-// } catch (error) {
-//     return  res.status(500).json({
-//             success: false,
-//             message: "Profiles fetch karne mein dikkat aayi",
-//             error: error.message
-//         });
-// }
-// }
 
 
 exports.getAllCategory = async (req, res) => {
@@ -91,7 +79,7 @@ exports.getAllCategory = async (req, res) => {
 
         const categories = await Category.find()
             .sort({ name: 1 })
-            .lean(); 
+            .lean();
 
         return res.status(200).json({
             success: true,
@@ -110,20 +98,22 @@ exports.getAllCategory = async (req, res) => {
 
 exports.getAllCityCategoryService = async (req, res) => {
     try {
-        const { Category, City, Service } = model.cityCategoryServiceModel;
-
-        const [categories, cities, services] = await Promise.all([
+        const { Category, City, Service, place } = model.cityCategoryServiceModel;
+        const [categories, cities, services, placeData] = await Promise.all([
             Category.find().sort({ name: 1 }).lean(),
             City.find().sort({ name: 1 }).lean(),
-            Service.find().sort({ name: 1 }).lean()
+            Service.find().sort({ name: 1 }).lean(),
+            place.find().sort({ name: 1 }).lean()
         ]);
+        console.log(categories, cities, services, placeData, "==")
 
         return res.status(200).json({
             success: true,
             data: {
                 categories,
                 cities,
-                services
+                services,
+                placeData
             }
         });
 
