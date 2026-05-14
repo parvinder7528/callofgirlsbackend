@@ -105,7 +105,6 @@ exports.getAllCityCategoryService = async (req, res) => {
             Service.find().sort({ name: 1 }).lean(),
             place.find().sort({ name: 1 }).lean()
         ]);
-        console.log(categories, cities, services, placeData, "==")
 
         return res.status(200).json({
             success: true,
