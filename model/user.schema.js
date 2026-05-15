@@ -7,14 +7,14 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true, select: false },
 
   // 📍 Step Tracking
-  currentStep: { 
-    type: Number, 
-    default: 1, 
-    enum: [1, 2, 3, 4,5] 
+  currentStep: {
+    type: Number,
+    default: 1,
+    enum: [1, 2, 3, 4, 5]
   },
-  isProfileComplete: { 
-    type: Boolean, 
-    default: false 
+  isProfileComplete: {
+    type: Boolean,
+    default: false
   },
 
   // Step 1: Basic Info
@@ -36,8 +36,8 @@ const userSchema = new mongoose.Schema({
   // Step 3: Bio & Services
   bio: { type: String, maxLength: 500 },
 
- services: [{ type: mongoose.Schema.Types.ObjectId, ref: "Service" }],
-place: [{ type: mongoose.Schema.Types.ObjectId, ref: "Place" }],
+  services: [{ type: mongoose.Schema.Types.ObjectId, ref: "Service" }],
+  place: [{ type: mongoose.Schema.Types.ObjectId, ref: "Place" }],
 
   attention: [{ type: String }],
 
@@ -49,13 +49,13 @@ place: [{ type: mongoose.Schema.Types.ObjectId, ref: "Place" }],
 
   // Step 4: Media & Contact
   gallery: [{ type: String }], // match "photos"
-  
+
   whatsAppNumber: { type: String },
   phone: { type: String },
 
-  contactMethod: { 
-    type: String, 
-    enum: ['phone', 'whatsapp', 'telegram', 'both'] 
+  contactMethod: {
+    type: String,
+    enum: ['phone', 'whatsapp', 'telegram', 'both']
   },
 
   whatsapp: { type: Boolean, default: false },
@@ -70,7 +70,12 @@ place: [{ type: mongoose.Schema.Types.ObjectId, ref: "Place" }],
   coupon: { type: String },
 
   agree: { type: Boolean },
-
+  isBoosted: { type: Boolean, default: false },
+  boostIntensity: {
+    type: String,
+    enum: ['none', 'Low', 'Medium', 'High'],
+    default: 'none'
+  },
   isVerifiedAge: { type: Boolean, default: false }
 
 }, { timestamps: true });

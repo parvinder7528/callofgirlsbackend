@@ -273,3 +273,105 @@ exports.resumeAd = async (req, res) => {
     });
   }
 };
+
+
+exports.createBoost = async (req, res) => {
+    try {
+        const { timeSlots, durationDays, intensity, pricing, profileId } = req.body;
+        const userId = req.user._id; 
+
+        // Razorpay nahi hai, isliye hum ek unique dummy order ID generate kar rahe hain
+        const dummyOrderId = `order_dummy_${Math.random().toString(36).slice(2, 9)}`;
+
+        const newBoost = new ProfileBoost({
+            userId,
+            profileId,
+            timeSlots, 
+            durationDays,
+            intensity,
+            pricing,
+            razorpay_order_id: dummyOrderId, // Static Dummy Order ID
+            status: 'waiting_for_payment'
+        });
+
+        await newBoost.save();
+
+        res.status(201).json({
+            success: true,
+            message: "Dummy order created",
+            order: {
+                id: dummyOrderId,
+                amount: pricing.totalAmount * 100,
+                currency: "INR"
+            },
+            boostId: newBoost._id
+        });
+
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/**
+ * 2. Get Boost Details by ID
+ */
+exports.getBoostById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const boost = await ProfileBoost.findById(id).populate('userId', 'name email');
+
+        if (!boost) {
+            return res.status(404).json({ success: false, message: "Boost not found" });
+        }
+
+        res.status(200).json({ success: true, data: boost });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/**
+ * 3. Verify & Activate (Static/Dummy Version)
+ */
+exports.verifyAndActivateBoost = async (req, res) => {
+    try {
+        const { razorpay_order_id } = req.body;
+
+        // Dummy IDs for testing
+        const dummyPaymentId = `pay_dummy_${Math.random().toString(36).slice(2, 9)}`;
+        const dummySignature = `sig_dummy_${Math.random().toString(36).slice(2, 15)}`;
+
+        // Pehle purana record dhoondo duration nikalne ke liye
+        const boostDoc = await ProfileBoost.findOne({ razorpay_order_id });
+        if (!boostDoc) {
+            return res.status(404).json({ success: false, message: "Order not found" });
+        }
+
+        const activatedAt = new Date();
+        const expiresAt = new Date();
+        expiresAt.setDate(activatedAt.getDate() + boostDoc.durationDays);
+
+        const updatedBoost = await ProfileBoost.findOneAndUpdate(
+            { razorpay_order_id },
+            {
+                isPaymentVerified: true, // Dummy verify set to true
+                paymentStatus: 'captured',
+                status: 'active',
+                razorpay_payment_id: dummyPaymentId,
+                razorpay_signature: dummySignature,
+                activatedAt,
+                expiresAt
+            },
+            { new: true }
+        );
+
+        res.status(200).json({ 
+            success: true, 
+            message: "Payment dummy-verified, Boost started!", 
+            data: updatedBoost 
+        });
+
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Activation failed" });
+    }
+};

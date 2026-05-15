@@ -4,6 +4,7 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const path = require("path")
 const fileUpload =require("express-fileupload")
+const {initBoostCron} = require("./crons/crons.js")
 const app = express();
 
 const PORT = process.env.PORT;
@@ -26,7 +27,7 @@ app.use(fileUpload({
 }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api',require("./routes/mainRoutes"));
-require('./crons/adsrun.cron');
+initBoostCron();
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 app.listen(PORT, () => {

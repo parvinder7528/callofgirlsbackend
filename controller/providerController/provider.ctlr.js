@@ -1,39 +1,135 @@
 const model = require("../../model/index.js");
 
+exports.getTrendingProfiles = async (req, res) => {
+    try {
+        // Sirf wahi profiles jinka intensity High ya Medium hai
+        const trendingFilter = {
+            isProfileComplete: true,
+            isBoosted: true,
+            boostIntensity: { $in: ['high', 'medium'] } 
+        };
+
+        const profiles = await model.userModel.aggregate([
+            { $match: trendingFilter },
+            
+            {
+                $addFields: {
+                    trendingWeight: {
+                        $cond: {
+                            if: { $eq: [{ $toLower: "$boostIntensity" }, "high"] },
+                            then: 2, // High priority
+                            else: 1  // Medium priority
+                        }
+                    }
+                }
+            },
+
+            {
+                $sort: {
+                    trendingWeight: -1,
+                    createdAt: -1
+                }
+            },
+
+            // { $limit: 10 },
+
+            {
+                $lookup: {
+                    from: "cities",
+                    localField: "city",
+                    foreignField: "_id",
+                    as: "city"
+                }
+            },
+            { $unwind: { path: "$city", preserveNullAndEmptyArrays: true } },
+            
+            {
+                $lookup: {
+                    from: "categories",
+                    localField: "category",
+                    foreignField: "_id",
+                    as: "category"
+                }
+            },
+            { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } }
+        ]);
+
+        res.status(200).json({
+            success: true,
+            results: profiles.length,
+            message: "Trending profiles fetched successfully",
+            data: profiles
+        });
+
+    } catch (error) {
+        console.error("Trending API Error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Trending profiles load nahi ho payi",
+            error: error.message
+        });
+    }
+};
 exports.getAllProfiles = async (req, res) => {
     try {
-        const { city, category, all } = req.query;
+        const { city, category } = req.query;
 
-        let filter = { isProfileComplete: true };
+        let filter = {
+            isProfileComplete: true,
+        };
 
         if (city) filter.city = city;
         if (category) filter.category = category;
-
-        let limit = all === 'true' ? 0 : 4;
 
         const profiles = await model.userModel.find(filter)
             .populate('city', 'name')
             .populate('category', 'name')
             .populate('services', 'name')
             .populate('place', 'name')
-            .limit(limit)
-            .sort({ createdAt: -1 })
+            .select('-password')
             .lean();
+
+        const priority = {
+            high: 1,
+            medium: 2,
+            low: 3,
+        };
+
+        const sortedProfiles = profiles.sort((a, b) => {
+
+            // 1. Boosted profiles top
+            if (a.isBoosted && !b.isBoosted) return -1;
+            if (!a.isBoosted && b.isBoosted) return 1;
+
+            // 2. Both boosted => sort by intensity
+            if (a.isBoosted && b.isBoosted) {
+
+                const aPriority =
+                    priority[(a.boostIntensity || "").toLowerCase()] || 999;
+
+                const bPriority =
+                    priority[(b.boostIntensity || "").toLowerCase()] || 999;
+
+                return aPriority - bPriority;
+            }
+
+            // 3. Normal profiles latest first
+            return new Date(b.createdAt) - new Date(a.createdAt);
+        });
+
         res.status(200).json({
             success: true,
-            results: profiles.length,
-            data: profiles
+            results: sortedProfiles.length,
+            data: sortedProfiles,
         });
 
     } catch (error) {
         res.status(500).json({
             success: false,
-            message: "Profiles fetch karne mein dikkat aayi",
-            error: error.message
+            message: error.message,
         });
     }
 };
-
 
 exports.getProfileById = async (req, res) => {
     try {
