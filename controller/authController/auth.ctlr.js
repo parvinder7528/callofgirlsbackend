@@ -47,7 +47,7 @@ exports.signup = async (req, res) => {
       phoneNumber,
       role: safeRole,
       location: userLocation,
-      currentStep: 2,
+      currentStep: 1,
       isProfileComplete: false
     });
 
