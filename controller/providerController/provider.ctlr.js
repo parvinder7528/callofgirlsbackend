@@ -27,11 +27,10 @@ exports.getTrendingProfiles = async (req, res) => {
             {
                 $sort: {
                     trendingWeight: -1,
-                    createdAt: -1
+                    // createdAt: -1
                 }
             },
 
-            // { $limit: 10 },
 
             {
                 $lookup: {

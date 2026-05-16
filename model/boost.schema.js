@@ -8,7 +8,8 @@ const ProfileBoostSchema = new mongoose.Schema({
     extras: [
         {
             label: String,
-            price: Number
+            price: Number,
+            boostCount: Number
         }
     ],
     timeSlots: [{
@@ -27,10 +28,24 @@ const ProfileBoostSchema = new mongoose.Schema({
         }
     }],
 
-    durationDays: {
+    // durationDays: {
+    //     type: Number,
+    //     required: true,
+    //     min: 1
+    // },
+    totalBoostCount: {
         type: Number,
         required: true,
         min: 1
+    },
+    runBoostCount: {
+        type: Number,
+        default: 0
+    },
+    lastProcessedSlot: {
+        type: String,
+        enum: ['Morning', 'Afternoon', 'Evening', 'Night', null],
+        default: null
     },
 
     intensity: {
@@ -74,7 +89,7 @@ const ProfileBoostSchema = new mongoose.Schema({
     },
 
     activatedAt: { type: Date }, // Actual boost start time
-    expiresAt: { type: Date },   // activatedAt + durationDays
+    expiresAt: { type: Date,default:null },   // activatedAt + durationDays
 
     createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });

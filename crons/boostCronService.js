@@ -4,73 +4,97 @@ const ProfileBoost = models.boostModel;
 const Profile = models.userModel;
 
 
+
 const checkIfInSlot = (currentTime, slots) => {
-    return slots.some(slot => {
+    return slots.find(slot => {
         const { startTime, endTime } = slot;
         
-        if (startTime > endTime) {
-            return currentTime >= startTime || currentTime < endTime;
+        const start = startTime === "24:00" ? "00:00" : startTime;
+        const end = endTime === "24:00" ? "00:00" : endTime;
+
+        if (start > end) {
+            return currentTime >= start || currentTime < end;
         }
-        return currentTime >= startTime && currentTime < endTime;
+        return currentTime >= start && currentTime < end;
     });
 };
-
 
 const syncAllBoosts = async () => {
     try {
         const now = moment().tz("Asia/Kolkata");
         const currentTime = now.format('HH:mm'); 
-        const currentDate = now.toDate();
 
         console.log(`[SYNC] Checking for Time: ${currentTime}`);
-
-        // 1. Handle Expiry (Directly Update)
-        const expired = await ProfileBoost.find({ 
-            status: 'active', 
-            expiresAt: { $lt: currentDate } 
-        });
-
-        for (const exp of expired) {
-            await Profile.findByIdAndUpdate(exp.userId, { isBoosted: false, boostIntensity: 'none' });
-            await ProfileBoost.findByIdAndUpdate(exp._id, { status: 'completed', isRunning: false });
-        }
 
         const activeBoosts = await ProfileBoost.find({
             status: 'active',
             isPaymentVerified: true,
-            activatedAt: { $lte: currentDate },
-            expiresAt: { $gte: currentDate }
+            $expr: { $lt: ["$runBoostCount", "$totalBoostCount"] }
         });
 
         let updatedCount = 0;
 
         for (const boost of activeBoosts) {
-            const isInSlot = checkIfInSlot(currentTime, boost.timeSlots);
+            const activeSlot = checkIfInSlot(currentTime, boost.timeSlots);
 
-            if (isInSlot && !boost.isRunning) {
-                console.log(`[STARTING] Boosting user: ${boost.userId}`);
-                
+            if (activeSlot) {
                 await Profile.findByIdAndUpdate(boost.userId, {
                     isBoosted: true,
                     boostIntensity: boost.intensity.toLowerCase()
                 });
-                await ProfileBoost.findByIdAndUpdate(boost._id, { isRunning: true });
+
+                let currentRunCount = boost.runBoostCount;
+                let isSlotChanged = false;
+
+                if (boost.lastProcessedSlot !== activeSlot.slotName) {
+                    currentRunCount = boost.runBoostCount + 1; 
+                    isSlotChanged = true;
+                    console.log(`[COUNT INCREMENTED] User ${boost.userId} entered NEW slot: ${activeSlot.slotName}. Total used slots: ${currentRunCount}`);
+                } else {
+                    console.log(`[ALREADY PROCESSED] User ${boost.userId} is still in the same slot: ${activeSlot.slotName}. No count added.`);
+                }
+
+                if (currentRunCount >= boost.totalBoostCount) {
+                    console.log(`[COMPLETED] All ${boost.totalBoostCount} slots finished for user: ${boost.userId}`);
+                    
+                    await Profile.findByIdAndUpdate(boost.userId, {
+                        isBoosted: false,
+                        boostIntensity: 'none'
+                    });
+
+                    await ProfileBoost.findByIdAndUpdate(boost._id, { 
+                        runBoostCount: boost.totalBoostCount,
+                        lastProcessedSlot: activeSlot.slotName,
+                        status: 'completed', 
+                        isRunning: false 
+                    });
+                } else {
+                    const updateData = { isRunning: true };
+                    if (isSlotChanged) {
+                        updateData.runBoostCount = currentRunCount;
+                        updateData.lastProcessedSlot = activeSlot.slotName; 
+                    }
+                    await ProfileBoost.findByIdAndUpdate(boost._id, updateData);
+                }
                 
                 updatedCount++;
             } 
-            
-            else if (!isInSlot && boost.isRunning) {
-                console.log(`[STOPPING] Removing boost for user: ${boost.userId}`);
-                
-                await Profile.findByIdAndUpdate(boost.userId, {
-                    isBoosted: false,
-                    boostIntensity: 'none'
-                });
-                await ProfileBoost.findByIdAndUpdate(boost._id, { isRunning: false });
-                
-                updatedCount++;
+            else {
+                if (boost.isRunning) {
+                    console.log(`[PAUSING] Outside slots. Pausing boost for user: ${boost.userId}`);
+                    
+                    await Profile.findByIdAndUpdate(boost.userId, {
+                        isBoosted: false,
+                        boostIntensity: 'none'
+                    });
+                    
+                    await ProfileBoost.findByIdAndUpdate(boost._id, { 
+                        isRunning: false 
+                    });
+                    
+                    updatedCount++;
+                }
             }
-            
         }
 
         return { success: true, count: updatedCount };
@@ -79,52 +103,4 @@ const syncAllBoosts = async () => {
         throw error;
     }
 };
-
-// const syncAllBoosts = async () => {
-//     try {
-//         const now = moment().tz("Asia/Kolkata");
-//         const currentTime = now.format('HH:mm'); 
-//         const currentDate = now.toDate();
-
-//         console.log(`[SYNC] Checking for Time: ${currentTime}`);
-
-//         await ProfileBoost.updateMany(
-//             { status: 'active', expiresAt: { $lt: currentDate } },
-//             { $set: { status: 'expired' } }
-//         );
-
-//         await Profile.updateMany({}, { $set: { isBoosted: false, boostIntensity: 'none' } });
-
-//         const activeBoosts = await ProfileBoost.find({
-//             isRunning: false,
-//             status: 'active',
-//             isPaymentVerified: true,
-//             activatedAt: { $lte: currentDate },
-//             expiresAt: { $gte: currentDate }
-//         });
-
-//         let boostedCount = 0;
-
-//         for (const boost of activeBoosts) {
-//             const isInSlot = checkIfInSlot(currentTime, boost.timeSlots);
-
-//             if (isInSlot) {
-//                 await Profile.findByIdAndUpdate(boost.userId, {
-//                     isBoosted: true,
-//                     boostIntensity: boost.intensity
-//                 });
-//                 boostedCount++;
-//                 await ProfileBoost.findByIdAndUpdate(boost._id, { isRunning: true });
-//             }else {
-//                 await ProfileBoost.findByIdAndUpdate(boost._id, { isRunning: false });
-//             }
-//         }
-
-//         return { success: true, count: boostedCount };
-//     } catch (error) {
-//         console.error('Boost Sync Error:', error);
-//         throw error;
-//     }
-// };
-
 module.exports = { syncAllBoosts };

@@ -15,7 +15,7 @@ const capitalize = (text) =>
     text.charAt(0).toUpperCase() + text.slice(1);
 exports.createBoost = async (req, res) => {
     try {
-        const { timeSlots, durationDays, intensity, pricing, profileId, startDate,extras } = req.body;
+        const { timeSlots, totalBoost, intensity, pricing, profileId, startDate,extras } = req.body;
         const userId = req.user._id;
         const isActiveBoost = await models.boostModel.findOne({
             userId,
@@ -32,10 +32,10 @@ exports.createBoost = async (req, res) => {
         const newBoost = new models.boostModel({
             userId,
             timeSlots,
-            durationDays,
+            totalBoostCount: totalBoost,
             extras,
             activatedAt: startDate,
-            expiresAt: new Date(new Date(startDate).getTime() + durationDays * 24 * 60 * 60 * 1000),
+            expiresAt:null,
             intensity: capitalize(intensity),
             pricing,
             razorpay_order_id: dummyOrderId,
@@ -59,44 +59,6 @@ exports.createBoost = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
-// exports.createBoost = async (req, res) => {
-//     try {
-//         const { timeSlots, durationDays, intensity, pricing, profileId } = req.body;
-//         const userId = req.user._id; // Auth middleware se
-
-//         // 1. Razorpay Order Create karein
-//         const options = {
-//             amount: pricing.totalAmount * 100, // Paise mein (e.g. 500 INR = 50000)
-//             currency: "INR",
-//             receipt: `boost_rcpt_${Date.now()}`,
-//         };
-
-//         const order = await razorpay.orders.create(options);
-
-//         // 2. Database mein Pending Boost save karein
-//         const newBoost = new models.ProfileBoost({
-//             userId,
-//             profileId,
-//             timeSlots, // Frontend se format: [{slotName: 'Morning', startTime: '06:00', endTime: '12:00'}]
-//             durationDays,
-//             intensity,
-//             pricing,
-//             razorpay_order_id: order.id,
-//             status: 'waiting_for_payment'
-//         });
-
-//         await newBoost.save();
-
-//         res.status(201).json({
-//             success: true,
-//             order, // Ye frontend pe Razorpay checkout kholne ke kaam aayega
-//             boostId: newBoost._id
-//         });
-
-//     } catch (error) {
-//         res.status(500).json({ success: false, message: error.message });
-//     }
-// };
 
 /**
  * 2. Get Boost Details by ID
@@ -121,6 +83,60 @@ exports.getBoostById = async (req, res) => {
     }
 };
 
+exports.getMyBoosts = async (req, res) => {
+    try {
+        const {  type } = req.query;
+const userId = req.user._id;
+        if (!userId) {
+            return res.status(400).json({ success: false, message: "User ID is required" });
+        }
+
+        const activeQuery = {
+            userId: userId,
+            status: "active",
+            isPaymentVerified: true,
+            $expr: { $lt: ["$runBoostCount", "$totalBoostCount"] }
+        };
+
+        const completedQuery = {
+            userId: userId,
+            $or: [
+                { status: "completed" },
+                { $expr: { $gte: ["$runBoostCount", "$totalBoostCount"] } }
+            ]
+        };
+
+        if (type === "active") {
+            const activeBoosts = await models.boostModel.find(activeQuery).sort({ createdAt: -1 });
+            return res.status(200).json({ success: true, type: "active", count: activeBoosts.length, data: activeBoosts });
+        }
+
+        if (type === "completed") {
+            const completedBoosts = await models.boostModel.find(completedQuery).sort({ updatedAt: -1 });
+            return res.status(200).json({ success: true, type: "completed", count: completedBoosts.length, data: completedBoosts });
+        }
+
+        const [activeBoosts, completedBoosts] = await Promise.all([
+            models.boostModel.find(activeQuery).sort({ createdAt: -1 }),
+            models.boostModel.find(completedQuery).sort({ updatedAt: -1 })
+        ]);
+
+        return res.status(200).json({
+            success: true,
+            type: "all",
+            activeCount: activeBoosts.length,
+            completedCount: completedBoosts.length,
+            data: {
+                active: activeBoosts,
+                completed: completedBoosts
+            }
+        });
+
+    } catch (error) {
+        console.error("Get Boosts Error:", error);
+        return res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+    }
+};
 
 exports.verifyAndActivateBoost = async (req, res) => {
     try {
