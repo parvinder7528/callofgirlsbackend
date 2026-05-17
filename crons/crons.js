@@ -2,8 +2,7 @@ const cron = require('node-cron');
 const { syncAllBoosts } = require('./boostCronService');
 
 const initBoostCron = () => {
-    // Har 15 minute mein check karega
-    cron.schedule('*/2 * * * *', async () => {
+    cron.schedule('*/45 * * * *', async () => {
         console.log(`[CRON] Checking boosts at ${new Date().toLocaleTimeString()}`);
         try {
             const result = await syncAllBoosts();
